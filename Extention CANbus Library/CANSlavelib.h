@@ -26,6 +26,7 @@ typedef struct
 	uint32_t	sensor_id;
 	uint16_t	freq;
 	uint8_t		start_flag;
+	uint8_t		stop_flag;
 }Sensor_HandleTypedef;
 
 /* Initialization functions  **************************************************/

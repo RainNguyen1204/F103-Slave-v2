@@ -40,6 +40,7 @@ static CAN_RxMessage	Slave_RxMessage;
 	Sensor->sensor_id 	= sensor_id;
 	Sensor->freq				= 0;
 	Sensor->start_flag	= 0;
+	Sensor->stop_flag		= 0;
 }
 
 /**
@@ -242,6 +243,7 @@ void CAN_Start_IMU(Sensor_HandleTypedef *Sensor ,UART_HandleTypeDef *huart, uint
 	if (getSensor_Id(CAN_RxQueue_getFront(&Slave_RxQueue).RxHeader) == IMU_ID)
 	{
 		Sensor->start_flag = 1;
+		Sensor->stop_flag = 0;
 		Sensor->freq = (uint16_t)((uint16_t)CAN_RxQueue_getFront(&Slave_RxQueue).rxdata[1] << 8 | CAN_RxQueue_getFront(&Slave_RxQueue).rxdata[0]);
 		if (first_time) 
 			return;
@@ -264,6 +266,7 @@ void CAN_Start_Encoder(Sensor_HandleTypedef *Sensor, TIM_HandleTypeDef *htim1, T
 	if (getSensor_Id(CAN_RxQueue_getFront(&Slave_RxQueue).RxHeader) == ENC_ID)
 	{
 		Sensor->start_flag = 1;
+		Sensor->stop_flag = 0;
 		Sensor->freq = (uint16_t)((uint16_t)CAN_RxQueue_getFront(&Slave_RxQueue).rxdata[1] << 8 | CAN_RxQueue_getFront(&Slave_RxQueue).rxdata[0]);
 		
 		if (first_time)
@@ -360,7 +363,7 @@ void CAN_Stop_Sensor(CAN_HandleTypeDef *hcan, Sensor_HandleTypedef *Sensor)
 	{
 		if (!Sensor->freq)
 			return;
-		Sensor->start_flag = 0;
+		Sensor->stop_flag = 1;
 		CAN_Sensor_Stop_fb(hcan);
 	}
 }
@@ -533,6 +536,9 @@ void CAN_IMU_Data_Transmit(CAN_HandleTypeDef *hcan, Sensor_HandleTypedef *IMU, u
 	if((!IMU->freq) && (!IMU->start_flag))
 		return;
 	
+	if (IMU->stop_flag == 1)
+		return;
+	
 	//Transmition handle
 	static uint32_t time = 0;
 	if ((HAL_GetTick() - time) > IMU->freq)
@@ -558,6 +564,9 @@ void CAN_Encoder_Data_Transmit(CAN_HandleTypeDef *hcan, Sensor_HandleTypedef *En
 	
 	//No transmit before start sensor
 	if ((!Encoder->freq) && (!Encoder->start_flag))
+		return;
+	
+	if (Encoder->stop_flag == 1)
 		return;
 	
 	//Transmition handle	
